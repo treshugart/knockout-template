@@ -1,6 +1,7 @@
 define(['knockout'], function(ko) {
   var oldTemplate = ko.bindingHandlers.template;
-  var loading = {};
+  var loaded = {};
+  var intervalMs = 10;
 
   return {
     init: function(el, val) {
@@ -8,15 +9,12 @@ define(['knockout'], function(ko) {
       var name = getNameFromValue(val);
       var script = document.getElementById(name);
 
-      if (script && script.src) {
-        var src = script.src;
+      if (script && script.src && !loaded[name]) {
+        loaded[name] = false;
 
-        delete script.src;
-        loading[name] = true;
-
-        xhr(src, {}, 'get', function(r) {
-          loading[name] = false;
-          script.innerText = r.responseText;
+        xhr(script.src, {}, 'get', function(r) {
+          loaded[name] = true;
+          script.text = r.responseText;
           call('init', args);
         });
       } else {
@@ -33,11 +31,11 @@ define(['knockout'], function(ko) {
 
       if (script) {
         var ival = setInterval(function() {
-          if (!loading[name]) {
+          if (loaded[name]) {
             clearInterval(ival);
             call('update', args);
           }
-        });
+        }, intervalMs);
       } else {
         call('update', args);
       }
@@ -57,10 +55,10 @@ define(['knockout'], function(ko) {
   function xhr(url, data, type, fn, async) {
     var request = false;
     var factories = [
-        function () { return new XMLHttpRequest() },
-        function () { return new ActiveXObject('Msxml2.XMLHTTP') },
-        function () { return new ActiveXObject('Msxml3.XMLHTTP') },
-        function () { return new ActiveXObject('Microsoft.XMLHTTP') }
+        function () { return new XMLHttpRequest(); },
+        function () { return new ActiveXObject('Msxml2.XMLHTTP'); },
+        function () { return new ActiveXObject('Msxml3.XMLHTTP'); },
+        function () { return new ActiveXObject('Microsoft.XMLHTTP'); }
       ];
 
     for (var i = 0; i < factories.length; i++) {
@@ -93,7 +91,7 @@ define(['knockout'], function(ko) {
       }
 
       fn(request);
-    }
+    };
 
     if (request.readyState == 4) {
       return;
